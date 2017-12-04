@@ -2,8 +2,11 @@ import com.sun.javafx.image.impl.IntArgb.ToIntArgbPreConv
 
 object Day03 {
   def solve(position: Int): Int = {
-    val array = buildArray(position)
-    distanceInArray(array)(position)
+    if(position == 1) 0
+    else {
+      val array = buildArray(position)
+      distanceInArray(array)(position)
+    }
   }
 
   def findClosestSquare(number: Int): Int = {
@@ -12,64 +15,78 @@ object Day03 {
 
   def findClosestSquare(number: Int, currentSize: Int): Int = {
     val i = currentSize * currentSize
-    if(i >= number) currentSize
+    if (i >= number) currentSize
     else findClosestSquare(number, currentSize + 2)
   }
 
   def buildArray(number: Int): Array[Array[Int]] = {
-    if(number == 1) return Array(Array(1))
-
-    val size = findClosestSquare(number)
-    println(s"Array size $size")
-    val array = Array.fill(size, size)(-1)
+    val arraySize = findClosestSquare(number)
+    println(s"Array size $arraySize")
+    val array = Array.fill(arraySize, arraySize)(-1)
     val center: Point = findCentralPoint(array)
 
     var currentArrayRing = 1
-    var nextMustNavigateThroughNewRing = false
-    def nextDirection(currentMoveDirection: CurrentMoveDiirection, currentPoint: Point): CurrentMoveDiirection = {
-      val xDIstance = currentPoint.x - center.x
-      val yDistance = currentPoint.y - center.y
 
-      if(xDIstance == currentArrayRing && yDistance == -currentArrayRing) Left
-      else if(xDIstance == -currentArrayRing && yDistance == -currentArrayRing) Down
-      else if(xDIstance == -currentArrayRing && yDistance == currentArrayRing) Right
-      else if(xDIstance == currentArrayRing && yDistance == currentArrayRing) Up
-      else currentMoveDirection
-    }
+    def fillArray(currentPoint: Point, currentNumber: Int, currentMovingDirection: CurrentMoveDiirection): Unit = {
+      val justEneteredNewRing = currentNumber == (2 * currentArrayRing - 1) * (2 * currentArrayRing - 1) + 1
+      val approachedLastNumberInRing = currentNumber == (2 * currentArrayRing + 1) * (2 * currentArrayRing + 1)
+      array(currentPoint.x)(currentPoint.y) = currentNumber
+      println(s"filling array x ${currentPoint.x} y ${currentPoint.y} num $currentNumber currentMoveDirection $currentMovingDirection")
 
-    def fillArray(x: Int, y: Int, num: Int, nextMoveDirection: CurrentMoveDiirection): Unit = {
-      array(x)(y) = num
-      println(s"filling array x $x y $y num $num currentMoveDirection $nextMoveDirection")
-
-      if(num == (2 * currentArrayRing + 1) * ( 2 * currentArrayRing +1)){
+      if (approachedLastNumberInRing) {
         println("increasig array ring")
-        currentArrayRing +=1
+        currentArrayRing += 1
       }
 
-      val diirection = if (num == (2 * currentArrayRing - 1) * ( 2 * currentArrayRing -1) +1 ){
+      val direction = if (justEneteredNewRing) {
         Up
-      } else{
-        nextDirection(nextMoveDirection, Point(x, y))
+      } else {
+        nextDirection(currentArrayRing, center, currentMovingDirection, currentPoint)
       }
 
-      diirection match {
-        case Right if num < size * size =>
-          fillArray(x + 1, y, num + 1, diirection)
-        case Left if num < size * size =>
-          fillArray(x - 1, y, num + 1, diirection)
-        case Up if num < size * size =>
-          fillArray(x, y - 1, num + 1, diirection)
-        case Down if num < size * size =>
-          fillArray(x, y + 1, num + 1, diirection)
-        case _ =>
+      if(currentNumber < arraySize * arraySize){
+        fillArray(currentPoint.move(direction), currentNumber + 1, direction)
       }
     }
 
     array(center.x)(center.y) = 1
-    fillArray(center.x + 1, center.y, 2, Up)
+    fillArray(Point(center.x + 1, center.y), 2, Up)
     array.transpose
   }
 
+  def nextDirection(currentArrayRing: Int, center: Point, currentMoveDirection: CurrentMoveDiirection, currentPoint: Point): CurrentMoveDiirection = {
+    val currentPositionInRing = evaluateCurrentPosition(currentArrayRing, center, currentPoint)
+    currentPositionInRing match {
+      case TopRightCorner => Left
+      case TopLeftCorner => Down
+      case BottomLeftCorner => Right
+      case BottomRightCorner => Up
+      case Other => currentMoveDirection
+    }
+  }
+
+  def evaluateCurrentPosition(currentArrayRing: Int, center: Point, currentPoint: Point): CurrentPositionInRing = {
+    val xDIstance = currentPoint.x - center.x
+    val yDistance = currentPoint.y - center.y
+
+    val isAtTopRightCorner = xDIstance == currentArrayRing && yDistance == -currentArrayRing
+    val isAtTopLeftCorner = xDIstance == -currentArrayRing && yDistance == -currentArrayRing
+    val isAtBottomLeftCornet = xDIstance == -currentArrayRing && yDistance == currentArrayRing
+    val isAtBottomRightCorner = xDIstance == currentArrayRing && yDistance == currentArrayRing
+
+    if (isAtTopRightCorner) TopRightCorner
+    else if (isAtTopLeftCorner) TopLeftCorner
+    else if (isAtBottomLeftCornet) BottomLeftCorner
+    else if (isAtBottomRightCorner) BottomRightCorner
+    else Other
+  }
+
+  sealed trait CurrentPositionInRing
+  case object TopRightCorner extends CurrentPositionInRing
+  case object TopLeftCorner extends CurrentPositionInRing
+  case object BottomLeftCorner extends CurrentPositionInRing
+  case object BottomRightCorner extends CurrentPositionInRing
+  case object Other extends CurrentPositionInRing
 
   def distanceInArray(array: Array[Array[Int]])(number: Int): Int = {
     val center = findCentralPoint(array)
@@ -83,20 +100,35 @@ object Day03 {
   }
 
   def findPointCoordinatesInArray(array: Array[Array[Int]], expectedValue: Int): Option[Point] = {
-    for(x <- array.indices){
-      for(y <- array.head.indices){
-        if(array(x)(y) == expectedValue) return Some(Point(x, y))
+    for (x <- array.indices) {
+      for (y <- array.head.indices) {
+        if (array(x)(y) == expectedValue) return Some(Point(x, y))
       }
     }
     None
   }
 
-  case class Point(x: Int, y: Int)
+  case class Point(x: Int, y: Int){
+    def move(direction: CurrentMoveDiirection): Point = direction match {
+      case Right => copy(x = x+1)
+      case Left => copy(x = x - 1)
+      case Up => copy(y = y -1)
+      case Down => copy(y = y +1)
+    }
+  }
+
+
+
   sealed trait CurrentMoveDiirection
+
   case object Right extends CurrentMoveDiirection
+
   case object Left extends CurrentMoveDiirection
+
   case object Up extends CurrentMoveDiirection
+
   case object Down extends CurrentMoveDiirection
+
 
   def main(args: Array[String]): Unit = {
     println(solve(368078))
