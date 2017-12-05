@@ -1,12 +1,8 @@
 object Day04 {
   def solve(lines: String): Int = {
     lines.split("\n")
-      .filter(nonEmptyLine)
+      .filter(Utils.nonEmptyLine)
       .count(isLineValid)
-  }
-
-  def nonEmptyLine(line: String): Boolean = {
-    !line.isEmpty && !line.forall(_.isWhitespace)
   }
 
   def isLineValid(line: String): Boolean = {
