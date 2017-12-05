@@ -15,6 +15,27 @@ object Day05 {
     iterate(0, 0)
   }
 
+  def solvePart2(input: String): Int = {
+    val instructions = input.split("\n").filter(Utils.nonEmptyLine).map(_.toInt)
+    val mazeLength = instructions.length
+
+    def iterate(currentPostion: Int, jumpNumbers: Int): Int = {
+      if(currentPostion >= mazeLength) jumpNumbers
+      else{
+        val jumpLength = instructions(currentPostion)
+        if(jumpLength >= 3){
+          instructions(currentPostion) = jumpLength - 1
+        }
+        else {
+          instructions(currentPostion) = jumpLength + 1
+        }
+
+        iterate(currentPostion + jumpLength, jumpNumbers + 1)
+      }
+    }
+
+    iterate(0, 0)
+  }
   def main(args: Array[String]): Unit = {
     val input =
       """1
@@ -1077,5 +1098,6 @@ object Day05 {
       """.stripMargin
 
     println(solve(input))
+    println(solvePart2(input))
   }
 }
